@@ -3,7 +3,7 @@ use wgpu::{Color, LoadOp};
 use crate::graphics::pipeline::{RenderPipeline, controller::PipelineKey};
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
-pub struct ClearPipeline(Color);
+pub struct ClearPipeline(pub Color);
 
 impl ClearPipeline {
     pub fn new(r: f64, g: f64, b: f64, a: f64) -> Self {
