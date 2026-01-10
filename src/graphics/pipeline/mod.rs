@@ -4,7 +4,7 @@ pub mod controller;
 pub mod pipelines;
 
 /// A trait representing a render pipeline.
-pub trait RenderPipeline<K: PipelineKey> {
+pub trait RenderPipeline<K: PipelineKey>: Send + Sync {
     /// Returns the name of the pipeline.
     fn label(&self) -> Option<&str>;
     /// Updates the pipeline state.
