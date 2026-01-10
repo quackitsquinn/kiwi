@@ -7,12 +7,14 @@ use std::{
 use anyhow::Context;
 use bytemuck::Pod;
 use log::debug;
+use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 use wgpu::{
     self as w, Color, CommandBuffer, CommandEncoder, CompareFunction, Device, DeviceDescriptor,
     Instance, InstanceDescriptor, Origin3d, PowerPreference, PresentMode, Queue, RenderPass,
-    RequestAdapterOptions, StoreOp, Surface, SurfaceConfiguration, SurfaceTexture, TextureAspect,
-    TextureView, util::DeviceExt,
+    RequestAdapterOptions, StoreOp, Surface, SurfaceConfiguration, SurfaceTargetUnsafe,
+    SurfaceTexture, TextureAspect, TextureView, util::DeviceExt,
 };
+use winit::window::Window;
 
 use crate::{
     ReadOnly,
@@ -22,7 +24,6 @@ use crate::{
         shader::ShaderProgram,
         texture::Texture,
     },
-    window::GlfwWindow,
 };
 
 pub mod buf;
@@ -48,15 +49,22 @@ pub struct WgpuRenderer {
 
 impl WgpuRenderer {
     /// Attaches a WGPU renderer to the given state and window.
-    pub async fn attach_to(state: &mut ComponentStore, window: &GlfwWindow) -> anyhow::Result<()> {
-        let size = window.size();
-
+    ///
+    /// # Safety
+    /// The caller must ensure that the window outlives the WgpuRenderer.
+    pub async unsafe fn attach_to<T: HasDisplayHandle + HasWindowHandle>(
+        state: &mut ComponentStore,
+        window: &T,
+        size: (u32, u32),
+    ) -> anyhow::Result<()> {
         let instance = Instance::new(&InstanceDescriptor {
             backends: wgpu::Backends::PRIMARY,
             ..Default::default()
         });
 
-        let surface = unsafe { window.create_surface(&instance) };
+        let surface =
+            unsafe { instance.create_surface_unsafe(SurfaceTargetUnsafe::from_window(window)?) }
+                .with_context(|| "Failed to create WGPU surface")?;
 
         let adapter = instance
             .request_adapter(&RequestAdapterOptions {
@@ -82,14 +90,14 @@ impl WgpuRenderer {
             .formats
             .iter()
             .copied()
-            .find(|f| f.is_srgb())
+            .find(|f: &wgpu::TextureFormat| f.is_srgb())
             .unwrap_or(surface_caps.formats[0]);
 
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: surface_format,
-            width: size.0 as u32,
-            height: size.1 as u32,
+            width: size.0,
+            height: size.1,
             present_mode: PresentMode::Fifo,
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],

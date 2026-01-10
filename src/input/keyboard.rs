@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
-use glfw::Key;
+use winit::keyboard::KeyCode;
 
 #[derive(Debug)]
 pub struct Keyboard {
-    states: HashMap<Key, KeyState>,
+    states: HashMap<KeyCode, KeyState>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -27,29 +27,29 @@ impl Keyboard {
         }
     }
 
-    pub fn set_key_state(&mut self, key: Key, state: KeyState) {
+    pub fn set_key_state(&mut self, key: KeyCode, state: KeyState) {
         self.states.insert(key, state);
     }
 
-    pub fn get_key_state(&self, key: Key) -> Option<KeyState> {
+    pub fn get_key_state(&self, key: KeyCode) -> Option<KeyState> {
         self.states.get(&key).copied()
     }
 
     /// Returns true if the key was pressed this frame.
-    pub fn is_key_pressed(&self, key: Key) -> bool {
+    pub fn is_key_pressed(&self, key: KeyCode) -> bool {
         matches!(self.get_key_state(key), Some(KeyState::Pressed))
     }
 
     /// Returns true if the key is currently being held down.
-    pub fn is_key_held(&self, key: Key) -> bool {
+    pub fn is_key_held(&self, key: KeyCode) -> bool {
         matches!(self.get_key_state(key), Some(KeyState::Held))
     }
 
-    pub fn press_key(&mut self, key: Key) {
+    pub fn press_key(&mut self, key: KeyCode) {
         self.set_key_state(key, KeyState::Pressed);
     }
 
-    pub fn release_key(&mut self, key: Key) {
+    pub fn release_key(&mut self, key: KeyCode) {
         self.set_key_state(key, KeyState::Released);
     }
 

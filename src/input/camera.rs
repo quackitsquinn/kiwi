@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use glam::{Mat4, Vec2, Vec3, vec2};
-use glfw::Key;
+use winit::keyboard::{Key, KeyCode};
 
 use crate::{
     component::{ComponentHandle, ComponentStore},
@@ -10,7 +10,6 @@ use crate::{
         camera::Camera,
         lowlevel::{WgpuRenderer, buf::UniformBuffer},
     },
-    window::GlfwWindow,
 };
 
 #[derive(Clone)]
@@ -18,6 +17,8 @@ pub struct CameraController {
     pub pos: Vec3,
     /// Pitch and yaw rotation.
     pub rot: Vec2,
+    /// Mouse sensitivity.
+    pub sensitivity: f32,
     camera: Camera,
     uniform: UniformBuffer<Mat4>,
     callback_handle: Option<TargetHandle<(f64, f64)>>,
@@ -49,6 +50,7 @@ impl CameraController {
             wgpu_handle: state.handle_for::<WgpuRenderer>(),
             camera,
             uniform,
+            sensitivity: 0.1,
             pos: Vec3::ZERO,
             callback_handle: None,
             rot: Vec2::ZERO,
@@ -132,49 +134,65 @@ impl CameraController {
         )
     }
 
-    /// Registers mouse movement callbacks to control the camera rotation.
-    pub fn register_callback(this: ComponentHandle<CameraController>, window: &GlfwWindow) {
-        let closure_camera = this.clone();
-        let mut last = Vec2::ZERO;
-        let mut first_mouse = true;
-        let handle = window.register_mouse_pos_callback(Some("camera"), move |(x, y)| {
-            let container = closure_camera.clone();
-            let mut camera = container.get_mut();
-            let pos = vec2(x as f32, y as f32);
-            if first_mouse {
-                last = pos;
-                first_mouse = false;
-                return;
-            }
+    // /// Registers mouse movement callbacks to control the camera rotation.
+    // pub fn register_callback(this: ComponentHandle<CameraController>, window: &GlfwWindow) {
+    //     let closure_camera = this.clone();
+    //     let mut last = Vec2::ZERO;
+    //     let mut first_mouse = true;
+    //     let handle = window.register_mouse_pos_callback(Some("camera"), move |(x, y)| {
+    //         let container = closure_camera.clone();
+    //         let mut camera = container.get_mut();
+    //         let pos = vec2(x as f32, y as f32);
+    //         if first_mouse {
+    //             last = pos;
+    //             first_mouse = false;
+    //             return;
+    //         }
 
-            let mut offset = pos - last;
-            last = pos;
+    //         let mut offset = pos - last;
+    //         last = pos;
 
-            // Invert y-axis for typical FPS camera control
-            offset *= Vec2::NEG_Y + Vec2::X;
+    //         // Invert y-axis for typical FPS camera control
+    //         offset *= Vec2::NEG_Y + Vec2::X;
 
-            camera.process_rot(offset);
-        });
+    //         camera.process_rot(offset);
+    //     });
 
-        this.get_mut().callback_handle = Some(handle);
+    //     this.get_mut().callback_handle = Some(handle);
+    // }
+
+    pub fn update_with_mouse_coords(&mut self, mouse_delta: Vec2, delta_time: f64) {
+        let delta = mouse_delta * self.sensitivity * delta_time as f32;
+
+        self.rot.x += delta.x as f32;
+        self.rot.y += delta.y as f32;
+
+        // Clamp the pitch to avoid flipping
+        self.rot.y = self.rot.y.clamp(-89.0, 89.0);
+
+        let yaw_radians = self.rot.x.to_radians();
+        let pitch_radians = self.rot.y.to_radians();
+
+        self.camera.set_orientation(yaw_radians, pitch_radians);
+        self.camera.pos(self.pos);
     }
 
     pub fn update_camera(&mut self, keyboard: &crate::input::keyboard::Keyboard, delta_time: f64) {
         let speed = 10.0 * delta_time as f32;
         let front = self.front();
-        if keyboard.is_key_held(Key::W) {
+        if keyboard.is_key_held(KeyCode::KeyW) {
             let front = self.front();
             self.update_position(|c| c + front * speed);
         }
-        if keyboard.is_key_held(Key::S) {
+        if keyboard.is_key_held(KeyCode::KeyS) {
             let front = self.front();
             self.update_position(|c| c - front * speed);
         }
-        if keyboard.is_key_held(Key::A) {
+        if keyboard.is_key_held(KeyCode::KeyA) {
             let right = front.cross(Vec3::Y).normalize();
             self.update_position(|c| c - right * speed);
         }
-        if keyboard.is_key_held(Key::D) {
+        if keyboard.is_key_held(KeyCode::KeyD) {
             let right = front.cross(Vec3::Y).normalize();
             self.update_position(|c| c + right * speed);
         }
