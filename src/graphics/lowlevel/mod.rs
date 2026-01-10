@@ -18,7 +18,7 @@ use crate::{
         shader::ShaderProgram,
         texture::Texture,
     },
-    resource::Resource,
+    shared::Shared,
     window::GlfwWindow,
 };
 
@@ -33,7 +33,7 @@ pub struct WgpuRenderer {
     pub surface: Surface<'static>,
     pub device: Device,
     pub queue: Queue,
-    pub config: Resource<SurfaceConfiguration>,
+    pub config: Shared<SurfaceConfiguration>,
     pub default_sampler: Option<wgpu::Sampler>,
     state: ComponentStoreHandle,
 }
@@ -95,7 +95,7 @@ impl WgpuRenderer {
             surface,
             device,
             queue,
-            config: Resource::new(config),
+            config: Shared::new(config),
             default_sampler: None,
             state: state.handle(),
         };

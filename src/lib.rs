@@ -13,7 +13,5 @@ pub mod assets;
 pub mod component;
 pub mod graphics;
 pub mod input;
+pub mod shared;
 pub mod window;
-
-// TODO: REMOVE
-pub mod resource;

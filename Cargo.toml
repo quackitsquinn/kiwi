@@ -15,3 +15,4 @@ glam = { version = "0.30.9", features = ["bytemuck"] }
 wgpu_text = "28.0.0"
 raw-window-handle = "0.6.2"
 rustc-hash = "2.1.1"
+thiserror = "2.0.17"

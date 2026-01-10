@@ -1,7 +1,7 @@
 use std::{fmt::Debug, sync::Arc};
 
 use anyhow::anyhow;
-use image::ImageBuffer;
+use image::{ImageBuffer, ImageResult};
 
 use crate::ReadOnly;
 
@@ -13,23 +13,25 @@ pub struct Image {
 
 impl Image {
     /// Creates an Image from raw bytes.
-    pub fn from_mem(raw_bytes: &[u8]) -> anyhow::Result<Self> {
+    pub fn from_mem(raw_bytes: &[u8]) -> ImageResult<Self> {
         let image = image::load_from_memory(raw_bytes)?;
         let rgba_image = image.to_rgba8();
         let pixel_bytes: Arc<[u8]> = Arc::from(rgba_image.as_raw().as_slice());
         let image =
             ImageBuffer::from_raw(rgba_image.width(), rgba_image.height(), pixel_bytes.clone())
-                .ok_or(anyhow!("failed to create image buffer!"))?;
+                // If this fails, something is very wrong with the image crate
+                .expect("Created invalid size image buffer!");
 
         Ok(Self { image, pixel_bytes })
     }
 
     /// Creates an Image from a file path.
-    pub fn from_file(path: &str) -> anyhow::Result<Self> {
+    pub fn from_file(path: &str) -> ImageResult<Self> {
         let image = image::open(path)?.to_rgba8();
         let pixel_bytes: Arc<[u8]> = Arc::from(image.as_raw().as_slice());
         let image = ImageBuffer::from_raw(image.width(), image.height(), pixel_bytes.clone())
-            .ok_or(anyhow!("failed to create image buffer!"))?;
+            // If this fails, something is very wrong with the image crate
+            .expect("Created invalid size image buffer!");
 
         Ok(Self { image, pixel_bytes })
     }
