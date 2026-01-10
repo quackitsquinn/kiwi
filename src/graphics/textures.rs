@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
-use wgpu::{TextureFormat, TextureUsages, naga::back::msl::sampler};
+use wgpu::{TextureFormat, TextureUsages};
 
 use crate::{
     ReadOnly, ReadOnlyString,
-    component::{ComponentHandle, ComponentStore, ComponentStoreHandle},
+    component::{ComponentHandle, ComponentStore},
     graphics::{
         image::Image,
         lowlevel::{WgpuRenderer, texture::Texture},

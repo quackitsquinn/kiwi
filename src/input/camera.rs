@@ -2,10 +2,9 @@ use std::fmt::Debug;
 
 use glam::{Mat4, Vec2, Vec3, vec2};
 use glfw::Key;
-use log::info;
 
 use crate::{
-    component::{ComponentHandle, ComponentStore, ComponentStoreHandle},
+    component::{ComponentHandle, ComponentStore},
     graphics::{
         callback::TargetHandle,
         camera::Camera,

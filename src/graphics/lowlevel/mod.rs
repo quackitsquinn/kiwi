@@ -1,6 +1,5 @@
 //! Low-level graphics abstractions using WGPU.
 use std::{
-    cell::{Cell, RefCell},
     fmt::Debug,
     sync::{Arc, RwLock},
 };
@@ -23,7 +22,6 @@ use crate::{
         shader::ShaderProgram,
         texture::Texture,
     },
-    shared::Shared,
     window::GlfwWindow,
 };
 

@@ -1,6 +1,5 @@
 use std::{fmt::Debug, sync::Arc};
 
-use anyhow::anyhow;
 use image::{ImageBuffer, ImageResult};
 
 use crate::ReadOnly;
