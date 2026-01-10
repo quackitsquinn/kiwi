@@ -1,6 +1,17 @@
 [package]
-name = "kiwi"
+name = "engine"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+anyhow = { version = "1.0.100", features = ["backtrace"] }
+bytemuck = { version = "1.24.0", features = ["derive"] }
+glfw = { version = "0.61.0", features = ["raw-window-handle-v0-6"] }
+image = "0.25.9"
+log = "0.4.29"
+smol = "2.0.2"
+wgpu = "28.0.0"
+glam = { version = "0.30.9", features = ["bytemuck"] }
+wgpu_text = "28.0.0"
+raw-window-handle = "0.6.2"
+rustc-hash = "2.1.1"
