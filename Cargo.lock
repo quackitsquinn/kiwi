@@ -740,25 +740,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
 
 [[package]]
-name = "engine"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bytemuck",
- "glam",
- "image",
- "log",
- "parking_lot",
- "raw-window-handle",
- "rustc-hash 2.1.1",
- "smol",
- "thiserror 2.0.17",
- "wgpu",
- "wgpu_text",
- "winit",
-]
-
-[[package]]
 name = "equator"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1268,6 +1249,25 @@ name = "khronos_api"
 version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
+
+[[package]]
+name = "kiwi"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bytemuck",
+ "glam",
+ "image",
+ "log",
+ "parking_lot",
+ "raw-window-handle",
+ "rustc-hash 2.1.1",
+ "smol",
+ "thiserror 2.0.17",
+ "wgpu",
+ "wgpu_text",
+ "winit",
+]
 
 [[package]]
 name = "lebe"
