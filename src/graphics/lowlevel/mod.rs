@@ -1,5 +1,9 @@
 //! Low-level graphics abstractions using WGPU.
-use std::{cell::RefCell, fmt::Debug, sync::Arc};
+use std::{
+    cell::{Cell, RefCell},
+    fmt::Debug,
+    sync::{Arc, RwLock},
+};
 
 use anyhow::Context;
 use bytemuck::Pod;
@@ -40,7 +44,7 @@ pub struct WgpuRenderer {
     /// The WGPU queue.
     pub queue: Queue,
     /// The surface configuration.
-    pub config: RefCell<SurfaceConfiguration>,
+    pub config: RwLock<SurfaceConfiguration>,
     state: ComponentStoreHandle,
 }
 
@@ -101,7 +105,7 @@ impl WgpuRenderer {
             surface,
             device,
             queue,
-            config: RefCell::new(config),
+            config: RwLock::new(config),
             state: state.handle(),
         };
 
@@ -115,7 +119,7 @@ impl WgpuRenderer {
     /// Panics if the new size has a width or height less than or equal to zero.
     pub fn resize(&self, new_size: (i32, i32)) {
         debug_assert!(new_size.0 > 0 && new_size.1 > 0, "Window size <= 0");
-        let mut cfg = self.config.borrow_mut();
+        let mut cfg = self.config.write().expect("CONFIG POISONED");
         cfg.width = new_size.0 as u32;
         cfg.height = new_size.1 as u32;
         self.surface.configure(&self.device, &cfg);
@@ -517,7 +521,7 @@ impl WgpuRenderer {
 
     /// Returns the current dimensions of the surface.
     pub fn dimensions(&self) -> (u32, u32) {
-        let cfg = self.config.borrow();
+        let cfg = self.config.read().expect("CONFIG POISONED");
         (cfg.width, cfg.height)
     }
 }

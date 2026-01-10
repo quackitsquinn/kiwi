@@ -17,7 +17,7 @@ impl DepthTexture {
     pub const TEXTURE_FORMAT: TextureFormat = TextureFormat::Depth32Float;
     pub fn new(state: &ComponentStore) -> Self {
         let wgpu = state.get::<WgpuRenderer>();
-        let config = wgpu.config.borrow();
+        let config = wgpu.config.read().expect("CONFIG POISONED");
         let size = wgpu::Extent3d {
             width: config.width,
             height: config.height,
@@ -50,7 +50,7 @@ impl DepthTexture {
 
     pub fn resize(&mut self) {
         let wgpu = self.wgpu_handle.get();
-        let config = wgpu.config.borrow();
+        let config = wgpu.config.read().expect("CONFIG POISONED");
         let size = wgpu::Extent3d {
             width: config.width,
             height: config.height,
