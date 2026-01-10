@@ -1,4 +1,5 @@
-use std::{fmt::Debug, sync::Arc};
+//! Low-level graphics abstractions using WGPU.
+use std::{cell::RefCell, fmt::Debug, sync::Arc};
 
 use anyhow::Context;
 use bytemuck::Pod;
@@ -28,13 +29,18 @@ pub mod pipeline;
 pub mod shader;
 pub mod texture;
 
+/// A WGPU-based renderer.
 pub struct WgpuRenderer {
+    /// The WGPU instance.
     pub instance: Instance,
+    /// The WGPU surface.
     pub surface: Surface<'static>,
+    /// The WGPU device.
     pub device: Device,
+    /// The WGPU queue.
     pub queue: Queue,
-    pub config: Shared<SurfaceConfiguration>,
-    pub default_sampler: Option<wgpu::Sampler>,
+    /// The surface configuration.
+    pub config: RefCell<SurfaceConfiguration>,
     state: ComponentStoreHandle,
 }
 
@@ -90,18 +96,14 @@ impl WgpuRenderer {
 
         surface.configure(&device, &config);
 
-        let mut this = WgpuRenderer {
+        let this = WgpuRenderer {
             instance,
             surface,
             device,
             queue,
-            config: Shared::new(config),
-            default_sampler: None,
+            config: RefCell::new(config),
             state: state.handle(),
         };
-
-        this.default_sampler =
-            Some(this.sampler(Some("default sampler"), wgpu::AddressMode::ClampToEdge));
 
         state.insert(this);
         Ok(())
@@ -113,11 +115,10 @@ impl WgpuRenderer {
     /// Panics if the new size has a width or height less than or equal to zero.
     pub fn resize(&self, new_size: (i32, i32)) {
         debug_assert!(new_size.0 > 0 && new_size.1 > 0, "Window size <= 0");
-        let mut cfg = self.config.get_mut();
+        let mut cfg = self.config.borrow_mut();
         cfg.width = new_size.0 as u32;
         cfg.height = new_size.1 as u32;
-        drop(cfg);
-        self.surface.configure(&self.device, &self.config.get());
+        self.surface.configure(&self.device, &cfg);
     }
 
     /// Creates a command encoder.
@@ -160,6 +161,7 @@ impl WgpuRenderer {
         unsafe { IndexBuffer::from_raw_parts(buffer, data.len()) }
     }
 
+    /// Creates a uniform buffer with the given data.
     pub fn uniform_buffer<T>(&self, data: &T, label: Option<&str>) -> UniformBuffer<T>
     where
         T: Pod,
@@ -205,6 +207,7 @@ impl WgpuRenderer {
     pub fn texture(
         &self,
         label: Option<&str>,
+        sampler: &wgpu::Sampler,
         format: wgpu::TextureFormat,
         usage: wgpu::TextureUsages,
         dims: (u32, u32),
@@ -281,8 +284,6 @@ impl WgpuRenderer {
             ..Default::default()
         });
 
-        let sampler = self.default_sampler.clone().expect("no default sampler!");
-
         let sampler_layout = wgpu::BindGroupLayoutEntry {
             binding: 1,
             visibility: wgpu::ShaderStages::FRAGMENT,
@@ -294,7 +295,7 @@ impl WgpuRenderer {
             &self.state,
             text,
             text_layout,
-            sampler,
+            sampler.clone(),
             sampler_layout,
             texture_view,
             image.len(),
@@ -305,6 +306,7 @@ impl WgpuRenderer {
     pub fn texture_uninit(
         &self,
         label: Option<&str>,
+        sampler: &wgpu::Sampler,
         format: wgpu::TextureFormat,
         usage: wgpu::TextureUsages,
         dims: (u32, u32),
@@ -346,8 +348,6 @@ impl WgpuRenderer {
             ..Default::default()
         });
 
-        let sampler = self.default_sampler.clone().expect("no default sampler!");
-
         let sampler_layout = wgpu::BindGroupLayoutEntry {
             binding: 1,
             visibility: wgpu::ShaderStages::FRAGMENT,
@@ -359,7 +359,7 @@ impl WgpuRenderer {
             &self.state,
             text,
             text_layout,
-            sampler,
+            sampler.clone(),
             sampler_layout,
             texture_view,
             layers as usize,
@@ -464,31 +464,6 @@ impl WgpuRenderer {
         self.device.create_render_pipeline(desc)
     }
 
-    /// Creates a render pipeline from the given parts.
-    #[allow(clippy::too_many_arguments)] // self is essentially invisible
-    pub fn pipeline<'a>(
-        &self,
-        label: Option<&str>,
-        shader: &ShaderProgram,
-        layout: &wgpu::PipelineLayout,
-        buffers: &[wgpu::VertexBufferLayout<'a>],
-        primitive: wgpu::PrimitiveState,
-        targets: &[Option<wgpu::ColorTargetState>],
-        depth_stencil: Option<wgpu::DepthStencilState>,
-    ) -> wgpu::RenderPipeline {
-        self.create_pipeline(&wgpu::RenderPipelineDescriptor {
-            label,
-            layout: Some(layout),
-            vertex: shader.vertex_state(buffers, None),
-            fragment: shader.fragment_state(targets.as_ref(), None),
-            primitive,
-            depth_stencil,
-            multisample: wgpu::MultisampleState::default(),
-            multiview_mask: None,
-            cache: None,
-        })
-    }
-
     pub fn pipeline_builder<'a>(&'a self, label: &'a str) -> pipeline::PipelineBuilder<'a> {
         pipeline::PipelineBuilder::new(self, label)
     }
@@ -542,7 +517,7 @@ impl WgpuRenderer {
 
     /// Returns the current dimensions of the surface.
     pub fn dimensions(&self) -> (u32, u32) {
-        let cfg = self.config.get();
+        let cfg = self.config.borrow();
         (cfg.width, cfg.height)
     }
 }

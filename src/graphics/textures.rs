@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use wgpu::{TextureFormat, TextureUsages};
+use wgpu::{TextureFormat, TextureUsages, naga::back::msl::sampler};
 
 use crate::{
     ReadOnly, ReadOnlyString,
@@ -21,6 +21,7 @@ pub struct TextureCollection {
     gpu_texture: Option<Texture>,
     label: Option<ReadOnlyString>,
     dimensions: (u32, u32),
+    sampler: wgpu::Sampler,
     handle: ComponentHandle<WgpuRenderer>,
 }
 
@@ -29,6 +30,7 @@ impl TextureCollection {
         state: &ComponentStore,
         label: Option<impl Into<ReadOnlyString>>,
         dimensions: (u32, u32),
+        sampler: wgpu::Sampler,
     ) -> Self {
         Self {
             textures: HashMap::new(),
@@ -37,6 +39,7 @@ impl TextureCollection {
             label: label.map(|l| l.into()),
             handle: state.handle_for::<WgpuRenderer>(),
             dimensions,
+            sampler,
         }
     }
 
@@ -100,6 +103,7 @@ impl TextureCollection {
 
         let texture = self.handle.get().texture(
             self.label.as_deref(),
+            &self.sampler,
             TextureFormat::Rgba8Unorm,
             TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
             self.dimensions,
