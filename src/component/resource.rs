@@ -24,6 +24,12 @@ impl ResourceNode {
     /// # Safety
     /// The caller must ensure that the type T matches the actual type of the resource.
     pub unsafe fn downcast_ref_unchecked<T: 'static>(&self) -> ComponentReadGuard<'_, T> {
+        // this check is very naive and WILL cause issues once threading is involved, but it catches deadlocks in single-threaded scenarios
+        // FIXME: ResourceNode needs to be reworked into probably a raw atomic implementation that can store the locker thread ID and locker location
+        assert!(
+            !self.data.is_locked_exclusive(),
+            "Attempted to acquire read lock on resource while it is write-locked"
+        );
         RwLockReadGuard::map(self.data.read(), |b| {
             // Currently we do only use downcast_ref, but in the future this might be turned into a manual pointer cast for performance reasons.
             // Don't make safety promises you can't keep!
@@ -37,6 +43,11 @@ impl ResourceNode {
     /// # Safety
     /// The caller must ensure that the type T matches the actual type of the resource.
     pub unsafe fn downcast_mut_unchecked<T: 'static>(&self) -> ComponentWriteGuard<'_, T> {
+        // FIXME: see comment in downcast_ref_unchecked
+        assert!(
+            !self.data.is_locked_exclusive() || self.data.is_locked(),
+            "Attempted to acquire read lock on resource while it is write-locked"
+        );
         RwLockWriteGuard::map(self.data.write(), |b| {
             // Currently we do only use downcast_mut, but in the future this might be turned into a manual pointer cast for performance reasons.
             // Don't make safety promises you can't keep!
