@@ -1,13 +1,12 @@
 use std::f32::consts;
 
-use glam::{Mat4, Vec3, Vec4};
+use glam::{Mat4, Vec2, Vec3, Vec4, vec2};
 
 #[derive(Clone, Debug)]
 pub struct Camera {
     projection: Mat4,
     view: Mat4,
-    pub yaw: f32,
-    pub pitch: f32,
+    pub rot: Vec2,
     pub position: Vec3,
     direction_vector: Vec3,
 }
@@ -31,8 +30,7 @@ impl Camera {
         Self {
             projection,
             view,
-            yaw: 0.0,
-            pitch: 0.0,
+            rot: Vec2::ZERO,
             position: Vec3::ZERO,
             direction_vector: Self::calculate_direction(0.0, 0.0),
         }
@@ -47,14 +45,18 @@ impl Camera {
         .normalize()
     }
 
+    /// Resizes the camera's projection matrix.
+    pub fn resize(&mut self, aspect_ratio: f32, z_near: f32, z_far: f32) {
+        self.projection = Mat4::perspective_rh(FOV_Y_RADS, aspect_ratio, z_near, z_far);
+    }
+
     /// Points the camera in the given yaw and pitch (in radians).
     ///
     /// Yaw's origin is facing down the positive Z axis, increasing clockwise.
     ///
     /// Pitch's origin is facing down the negative Y axis, increasing upwards.
     pub fn set_orientation(&mut self, yaw: f32, pitch: f32) {
-        self.yaw = yaw;
-        self.pitch = pitch;
+        self.rot = Vec2::new(yaw, pitch);
 
         let direction = Vec3::new(
             yaw.cos() * pitch.cos(),
@@ -74,8 +76,7 @@ impl Camera {
     /// Points the camera to look at the given target position.
     pub fn look_at(&mut self, target: Vec3) {
         let direction = (target - self.position).normalize();
-        self.pitch = direction.y.asin();
-        self.yaw = direction.z.atan2(direction.x);
+        self.rot = vec2(direction.z.atan2(direction.x), direction.y.asin());
 
         self.direction_vector = direction;
         self.view = Mat4::look_at_rh(self.position, target, Vec3::Y);
@@ -106,5 +107,12 @@ impl Camera {
     /// Returns the combined projection and view matrix of the camera.
     pub fn projection_view_matrix(&self) -> Mat4 {
         OPENGL_TO_WGPU_MATRIX * self.projection * self.view
+    }
+
+    /// Flushes the camera's view matrix based on its current position and direction.
+    pub fn flush(&mut self) {
+        self.direction_vector = Self::calculate_direction(self.rot.x, self.rot.y);
+        let target = self.position + self.direction_vector;
+        self.view = Mat4::look_at_rh(self.position, target, Vec3::Y);
     }
 }
