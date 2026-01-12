@@ -490,15 +490,15 @@ impl WgpuRenderer {
         Ok((frame, view))
     }
 
-    /// Clears the given texture view with the specified color using the provided command encoder.
-    pub fn render_pass<'b>(
+    /// Uses the given encoder to begin a render pass with the specified parameters. If you need more granular control, use `CommandEncoder::begin_render_pass` directly.
+    pub fn render_pass<'encoder>(
         &self,
         label: Option<&str>,
-        encoder: &'b mut CommandEncoder,
+        encoder: &'encoder mut CommandEncoder,
         view: &TextureView,
         depth_stencil_attachment: Option<wgpu::RenderPassDepthStencilAttachment>,
         color_load_op: wgpu::LoadOp<Color>,
-    ) -> RenderPass<'b> {
+    ) -> RenderPass<'encoder> {
         encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label,
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
