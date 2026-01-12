@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{any::Any, fmt::Debug};
 
 use anyhow::Context;
 use wgpu::TextureView;
@@ -7,7 +7,7 @@ use crate::{
     component::{ComponentHandle, ComponentStore},
     graphics::{
         lowlevel::WgpuRenderer,
-        pipeline::{RenderPipeline, UpdateRequest},
+        pipeline::{RenderPipeline, UpdateRequest, downcast_pipeline_mut, downcast_pipeline_ref},
     },
 };
 
@@ -19,7 +19,7 @@ pub trait PipelineKey:
 }
 
 pub struct RenderController<K: PipelineKey> {
-    pipelines: std::collections::HashMap<K, Box<dyn RenderPipeline<K>>>,
+    pipelines: std::collections::HashMap<K, Box<dyn RenderPipeline<K> + 'static>>,
     render_list: Vec<K>,
     render_suface: Option<(K, wgpu::TextureView)>,
     /// The WGPU renderer. Convenience access for pipelines.
@@ -123,6 +123,21 @@ impl<K: PipelineKey> RenderController<K> {
             pipeline.render(self, encoder, target);
         }
         Ok(())
+    }
+
+    /// Retrieves a reference to a pipeline of the specified type.
+    pub fn pipeline<P: RenderPipeline<K> + 'static>(&self, key: &K) -> anyhow::Result<&P> {
+        downcast_pipeline_ref::<K, P>(self, key)?
+            .with_context(|| format!("pipeline {:?} does not exist", key))
+    }
+
+    /// Retrieves a mutable reference to a pipeline of the specified type.
+    pub fn pipeline_mut<P: RenderPipeline<K> + 'static>(
+        &mut self,
+        key: &K,
+    ) -> anyhow::Result<&mut P> {
+        downcast_pipeline_mut::<K, P>(self, key)?
+            .with_context(|| format!("pipeline {:?} does not exist", key))
     }
 }
 
