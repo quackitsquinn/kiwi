@@ -57,6 +57,7 @@ impl<'a> PipelineBuilder<'a> {
         self
     }
 
+    /// Adds a color target to the pipeline.
     pub fn add_color_target(mut self, format: wgpu::TextureFormat) -> Self {
         self.color_targets.push(Some(wgpu::ColorTargetState {
             format,
@@ -64,6 +65,17 @@ impl<'a> PipelineBuilder<'a> {
             write_mask: wgpu::ColorWrites::ALL,
         }));
         self
+    }
+
+    /// Adds a color target with the default format to the pipeline.
+    pub fn default_color_target(self) -> Self {
+        let format = self
+            .wgpu
+            .config
+            .read()
+            .expect("failed to lock config")
+            .format;
+        self.add_color_target(format)
     }
 
     /// Sets the primitive state for the pipeline.
@@ -78,6 +90,7 @@ impl<'a> PipelineBuilder<'a> {
         self
     }
 
+    /// Builds the pipeline.
     pub fn build(
         self,
         compilation_options: Option<wgpu::PipelineCompilationOptions<'_>>,
@@ -116,8 +129,12 @@ impl<'a> PipelineBuilder<'a> {
     }
 }
 
+/// A wrapper for a WGPU render pipeline.
 pub struct WgpuPipeline {
+    /// The WGPU render pipeline.
     pub pipeline: wgpu::RenderPipeline,
+    /// The shader program used by the pipeline.
     pub shader: ShaderProgram,
+    /// The pipeline layout.
     pub layout: wgpu::PipelineLayout,
 }
