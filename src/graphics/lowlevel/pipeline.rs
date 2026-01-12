@@ -130,6 +130,7 @@ impl<'a> PipelineBuilder<'a> {
 }
 
 /// A wrapper for a WGPU render pipeline.
+#[derive(Debug, Clone)]
 pub struct WgpuPipeline {
     /// The WGPU render pipeline.
     pub pipeline: wgpu::RenderPipeline,

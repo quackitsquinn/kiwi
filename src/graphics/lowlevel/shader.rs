@@ -18,7 +18,7 @@ impl ShaderProgram {
     /// Creates a new ShaderProgram from the given parts.
     ///
     /// You probably want to use [`crate::graphics::WgpuInstance::load_shader`] to create the shader module.
-    pub fn from_raw_parts<'a>(
+    pub fn from_raw_parts(
         module: wgpu::ShaderModule,
         vertex_entry_point: Option<ReadOnlyString>,
         fragment_entry_point: Option<ReadOnlyString>,
