@@ -87,11 +87,7 @@ impl CameraController {
     }
 
     /// Creates a bind group for the camera uniform buffer.
-    pub fn bind_group_with_layout(
-        &self,
-        layout: &wgpu::BindGroupLayout,
-        binding: u32,
-    ) -> wgpu::BindGroup {
+    pub fn bind_group(&self, layout: &wgpu::BindGroupLayout, binding: u32) -> wgpu::BindGroup {
         self.wgpu_handle.get().bind_group(
             Some("camera bind group"),
             layout,
@@ -105,12 +101,9 @@ impl CameraController {
     }
 
     /// Creates a bind group for the camera uniform buffer.
-    pub fn bind_group(&self, binding: u32) -> (wgpu::BindGroupLayout, wgpu::BindGroup) {
+    pub fn bind_group_and_layout(&self, binding: u32) -> (wgpu::BindGroup, wgpu::BindGroupLayout) {
         let layout = self.bind_group_layout(binding);
-        (
-            layout.clone(),
-            self.bind_group_with_layout(&layout, binding),
-        )
+        (self.bind_group(&layout.clone(), binding), layout)
     }
 
     /// Updates the camera rotation based on mouse movement.
