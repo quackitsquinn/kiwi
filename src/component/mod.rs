@@ -7,6 +7,9 @@ use std::{
 
 pub mod handles;
 mod resource;
+mod typemap;
+
+pub use typemap::{ImmutableTypeMap, TypeMap};
 
 use parking_lot::{MappedRwLockReadGuard, MappedRwLockWriteGuard};
 use resource::ResourceNode;

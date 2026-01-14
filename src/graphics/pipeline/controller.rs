@@ -4,10 +4,13 @@ use anyhow::Context;
 use wgpu::TextureView;
 
 use crate::{
-    component::{ComponentHandle, ComponentStore},
+    component::{ComponentHandle, ComponentStore, TypeMap},
     graphics::{
         lowlevel::WgpuRenderer,
-        pipeline::{RenderPipeline, UpdateRequest, downcast_pipeline_mut, downcast_pipeline_ref},
+        pipeline::{
+            DeltaTime, FrameCount, RenderPipeline, UpdateRequest, downcast_pipeline_mut,
+            downcast_pipeline_ref,
+        },
     },
 };
 
@@ -18,10 +21,21 @@ pub trait PipelineKey:
 {
 }
 
+/// This struct really needs some through docs. I don't want to write them right now though.
+///
+/// Pretty much, you insert pipelines based off of the key type K, and then you can retrieve them later.
+///
+/// You HAVE to set a render order, or nothing will be rendered. (via set_render_order)
+///
+/// You can stash frame-specific data that can be accessed by pipelines during rendering. This data is cleared at the start of each frame before updating pipelines.
+/// This data by default contains a DeltaTime (time since last frame) and FrameCount (number of frames rendered so far).
+///
 pub struct RenderController<K: PipelineKey> {
     pipelines: std::collections::HashMap<K, Box<dyn RenderPipeline<K> + 'static>>,
     render_list: Vec<K>,
     render_suface: Option<(K, wgpu::TextureView)>,
+    frame_data: TypeMap,
+    frame_count: u64,
     /// The WGPU renderer. Convenience access for pipelines.
     pub wgpu: ComponentHandle<WgpuRenderer>,
 }
@@ -34,6 +48,8 @@ impl<K: PipelineKey> RenderController<K> {
             render_list: Vec::new(),
             render_suface: None,
             wgpu: state.handle_for::<WgpuRenderer>(),
+            frame_data: TypeMap::new(),
+            frame_count: 0,
         }
     }
 
@@ -71,7 +87,11 @@ impl<K: PipelineKey> RenderController<K> {
     }
 
     /// Updates all pipelines managed by the controller.
-    pub fn update_pipelines(&mut self) {
+    pub fn update_pipelines(&mut self, delta_time: f32) {
+        self.frame_data.clear();
+        self.frame_data.insert(DeltaTime(delta_time));
+        self.frame_count += 1;
+        self.frame_data.insert(FrameCount(self.frame_count));
         let keys = self.pipelines.keys().cloned().collect::<Vec<K>>();
         for pipeline_key in keys {
             let pipeline = self.get_pipeline_mut(&pipeline_key).unwrap();
@@ -139,6 +159,25 @@ impl<K: PipelineKey> RenderController<K> {
     ) -> anyhow::Result<&mut P> {
         downcast_pipeline_mut::<K, P>(self, key)?
             .with_context(|| format!("pipeline {:?} does not exist", key))
+    }
+
+    /// Stashes frame-specific data that can be accessed by pipelines during rendering.
+    /// This data is cleared at the start of each frame before updating pipelines.
+    pub fn stash<T: 'static + Send + Sync>(&mut self, data: T) {
+        self.frame_data.insert(data);
+    }
+
+    /// Retrieves a reference to stashed frame-specific data of the specified type.
+    /// Returns None if no such data exists.
+    pub fn retrieve_checked<T: 'static + Send + Sync>(&self) -> Option<&T> {
+        self.frame_data.get::<T>()
+    }
+
+    /// Retrieves a reference to stashed frame-specific data of the specified type.
+    /// Panics if no such data exists. Use `retrieve_checked` if you want to handle the absence of data more gracefully.
+    pub fn retrieve<T: 'static + Send + Sync>(&self) -> &T {
+        self.retrieve_checked::<T>()
+            .expect("Requested frame data not found")
     }
 }
 

@@ -63,3 +63,11 @@ pub fn downcast_pipeline_mut<'a, K: PipelineKey, P: RenderPipeline<K> + Sized + 
 #[derive(thiserror::Error, Debug)]
 #[error("Pipeline is not of the expected type")]
 pub struct IncorrectPipelineType;
+
+/// Frame time delta in seconds.
+#[repr(transparent)]
+pub struct DeltaTime(pub f32);
+
+/// Frame count that counts the number of frames rendered since a undefined starting point.
+#[repr(transparent)]
+pub struct FrameCount(pub u64);
