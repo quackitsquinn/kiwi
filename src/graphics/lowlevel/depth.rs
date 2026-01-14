@@ -5,6 +5,7 @@ use crate::{
     graphics::lowlevel::WgpuRenderer,
 };
 
+/// A depth texture for use in rendering.
 #[derive(Clone, Debug)]
 pub struct DepthTexture {
     pub texture: wgpu::Texture,
@@ -14,7 +15,10 @@ pub struct DepthTexture {
 }
 
 impl DepthTexture {
+    /// The texture format used for the depth texture.
     pub const TEXTURE_FORMAT: TextureFormat = TextureFormat::Depth32Float;
+
+    /// Creates a new depth texture matching the current size of the swap chain.
     pub fn new(state: &ComponentStore) -> Self {
         let wgpu = state.get::<WgpuRenderer>();
         let config = wgpu.config.read().expect("CONFIG POISONED");
@@ -48,6 +52,7 @@ impl DepthTexture {
         }
     }
 
+    /// Resizes the depth texture to match the current size of the swap chain.
     pub fn resize(&mut self) {
         let wgpu = self.wgpu_handle.get();
         let config = wgpu.config.read().expect("CONFIG POISONED");
@@ -74,6 +79,7 @@ impl DepthTexture {
             .create_view(&wgpu::TextureViewDescriptor::default());
     }
 
+    /// Gets the depth stencil state for use in a render pipeline.
     pub fn state(&self) -> wgpu::DepthStencilState {
         wgpu::DepthStencilState {
             format: Self::TEXTURE_FORMAT,
@@ -84,6 +90,7 @@ impl DepthTexture {
         }
     }
 
+    /// Gets the depth stencil attachment for use in a render pass.
     pub fn attachment(&self) -> wgpu::RenderPassDepthStencilAttachment<'_> {
         wgpu::RenderPassDepthStencilAttachment {
             view: &self.view,
@@ -93,5 +100,58 @@ impl DepthTexture {
             }),
             stencil_ops: None,
         }
+    }
+
+    /// Creates a bind group layout entry for the depth texture.
+    pub fn bind_group_layout_entry(binding: u32) -> wgpu::BindGroupLayoutEntry {
+        wgpu::BindGroupLayoutEntry {
+            binding,
+            visibility: wgpu::ShaderStages::FRAGMENT,
+            ty: wgpu::BindingType::Texture {
+                sample_type: wgpu::TextureSampleType::Depth,
+                view_dimension: wgpu::TextureViewDimension::D2,
+                multisampled: false,
+            },
+            count: None,
+        }
+    }
+
+    /// Creates a bind group for the depth texture. Uses the given sampler.
+    pub fn bind_group(
+        &self,
+        texture_binding: u32,
+        sampler_binding: u32,
+        sampler: &wgpu::Sampler,
+    ) -> wgpu::BindGroup {
+        let wgpu = self.wgpu_handle.get();
+        let layout = wgpu
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Depth Texture Bind Group Layout"),
+                entries: &[
+                    Self::bind_group_layout_entry(texture_binding),
+                    wgpu::BindGroupLayoutEntry {
+                        binding: sampler_binding,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
+                        count: None,
+                    },
+                ],
+            });
+
+        wgpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Depth Texture Bind Group"),
+            layout: &layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: texture_binding,
+                    resource: wgpu::BindingResource::TextureView(&self.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: sampler_binding,
+                    resource: wgpu::BindingResource::Sampler(sampler),
+                },
+            ],
+        })
     }
 }
