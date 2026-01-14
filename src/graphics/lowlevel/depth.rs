@@ -103,17 +103,34 @@ impl DepthTexture {
     }
 
     /// Creates a bind group layout entry for the depth texture.
-    pub fn bind_group_layout_entry(binding: u32) -> wgpu::BindGroupLayoutEntry {
-        wgpu::BindGroupLayoutEntry {
-            binding,
-            visibility: wgpu::ShaderStages::FRAGMENT,
-            ty: wgpu::BindingType::Texture {
-                sample_type: wgpu::TextureSampleType::Depth,
-                view_dimension: wgpu::TextureViewDimension::D2,
-                multisampled: false,
-            },
-            count: None,
-        }
+    pub fn bind_group_layout(
+        &self,
+        texture_binding: u32,
+        sampler_binding: u32,
+        sampler_type: wgpu::SamplerBindingType,
+    ) -> wgpu::BindGroupLayout {
+        let wgpu = self.wgpu_handle.get();
+        wgpu.bind_group_layout(
+            Some("depth texture bind group layout"),
+            &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: texture_binding,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        multisampled: false,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        sample_type: wgpu::TextureSampleType::Depth,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: sampler_binding,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(sampler_type),
+                    count: None,
+                },
+            ],
+        )
     }
 
     /// Creates a bind group for the depth texture. Uses the given sampler.
@@ -122,36 +139,30 @@ impl DepthTexture {
         texture_binding: u32,
         sampler_binding: u32,
         sampler: &wgpu::Sampler,
-    ) -> wgpu::BindGroup {
+    ) -> (wgpu::BindGroupLayout, wgpu::BindGroup) {
         let wgpu = self.wgpu_handle.get();
-        let layout = wgpu
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Depth Texture Bind Group Layout"),
-                entries: &[
-                    Self::bind_group_layout_entry(texture_binding),
-                    wgpu::BindGroupLayoutEntry {
+        let layout = self.bind_group_layout(
+            texture_binding,
+            sampler_binding,
+            wgpu::SamplerBindingType::Filtering,
+        );
+
+        (
+            layout.clone(),
+            wgpu.bind_group(
+                Some("depth texture bind group"),
+                &layout,
+                &[
+                    wgpu::BindGroupEntry {
+                        binding: texture_binding,
+                        resource: wgpu::BindingResource::TextureView(&self.view),
+                    },
+                    wgpu::BindGroupEntry {
                         binding: sampler_binding,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
-                        count: None,
+                        resource: wgpu::BindingResource::Sampler(sampler),
                     },
                 ],
-            });
-
-        wgpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Depth Texture Bind Group"),
-            layout: &layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: texture_binding,
-                    resource: wgpu::BindingResource::TextureView(&self.view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: sampler_binding,
-                    resource: wgpu::BindingResource::Sampler(sampler),
-                },
-            ],
-        })
+            ),
+        )
     }
 }
