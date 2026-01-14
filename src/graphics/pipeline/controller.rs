@@ -119,6 +119,7 @@ impl<K: PipelineKey> RenderController<K> {
                 .with_context(|| format!("Pipeline {:?} not found in controller", pipeline_key))?;
             if pipeline_key == key {
                 pipeline.render(self, encoder, output);
+                continue;
             }
             pipeline.render(self, encoder, target);
         }
