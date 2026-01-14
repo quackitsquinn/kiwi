@@ -171,7 +171,7 @@ impl<K: PipelineKey> RenderController<K> {
     /// Retrieves a reference to stashed frame-specific data of the specified type.
     /// Returns None if no such data exists.
     pub fn retrieve_checked<T: 'static + Send + Sync>(&self) -> Option<&T> {
-        self.frame_data.retrieve::<T>()
+        self.frame_data.retrieve_checked::<T>()
     }
 
     /// Retrieves a reference to stashed frame-specific data of the specified type.
@@ -217,8 +217,14 @@ impl Stash {
     }
 
     /// Retrieves a reference to stashed data of the specified type.
-    pub fn retrieve<T: 'static + Send + Sync>(&self) -> Option<&T> {
+    pub fn retrieve_checked<T: 'static + Send + Sync>(&self) -> Option<&T> {
         self.inner.get::<T>()
+    }
+
+    /// Retrieves a reference to stashed data of the specified type.
+    pub fn retrieve<T: 'static + Send + Sync>(&self) -> &T {
+        self.retrieve_checked::<T>()
+            .expect("Requested stashed data not found")
     }
 
     /// Removes all stashed data.
