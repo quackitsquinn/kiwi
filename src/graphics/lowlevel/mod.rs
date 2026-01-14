@@ -185,7 +185,7 @@ impl WgpuRenderer {
             });
 
         // Safety: The buffer is valid for type T as it was created from a slice of T.
-        unsafe { UniformBuffer::from_raw_parts(buffer, self.state.clone()) }
+        unsafe { UniformBuffer::from_raw_parts(label, buffer, self.state.clone()) }
     }
 
     /// Loads a shader module from WGSL source code.
