@@ -34,7 +34,7 @@ pub struct RenderController<K: PipelineKey> {
     pipelines: std::collections::HashMap<K, Box<dyn RenderPipeline<K> + 'static>>,
     render_list: Vec<K>,
     render_suface: Option<(K, wgpu::TextureView)>,
-    frame_data: TypeMap,
+    frame_data: Stash,
     frame_count: u64,
     /// The WGPU renderer. Convenience access for pipelines.
     pub wgpu: ComponentHandle<WgpuRenderer>,
@@ -48,7 +48,7 @@ impl<K: PipelineKey> RenderController<K> {
             render_list: Vec::new(),
             render_suface: None,
             wgpu: state.handle_for::<WgpuRenderer>(),
-            frame_data: TypeMap::new(),
+            frame_data: Stash::new(),
             frame_count: 0,
         }
     }
@@ -88,17 +88,18 @@ impl<K: PipelineKey> RenderController<K> {
 
     /// Updates all pipelines managed by the controller.
     pub fn update_pipelines(&mut self, delta_time: f32) {
-        self.frame_data.clear();
-        self.frame_data.insert(DeltaTime(delta_time));
+        let mut stash = Stash::new();
+        stash.stash(DeltaTime(delta_time));
         self.frame_count += 1;
-        self.frame_data.insert(FrameCount(self.frame_count));
+        stash.stash(FrameCount(self.frame_count));
         let keys = self.pipelines.keys().cloned().collect::<Vec<K>>();
         for pipeline_key in keys {
             let pipeline = self.get_pipeline_mut(&pipeline_key).unwrap();
-            if let Some(request) = pipeline.update() {
+            if let Some(request) = pipeline.update(&mut stash) {
                 self.handle_update_request(pipeline_key, request);
             }
         }
+        self.frame_data = stash;
     }
 
     /// Renders all pipelines in the order specified by `set_render_order`.
@@ -164,13 +165,13 @@ impl<K: PipelineKey> RenderController<K> {
     /// Stashes frame-specific data that can be accessed by pipelines during rendering.
     /// This data is cleared at the start of each frame before updating pipelines.
     pub fn stash<T: 'static + Send + Sync>(&mut self, data: T) {
-        self.frame_data.insert(data);
+        self.frame_data.stash(data);
     }
 
     /// Retrieves a reference to stashed frame-specific data of the specified type.
     /// Returns None if no such data exists.
     pub fn retrieve_checked<T: 'static + Send + Sync>(&self) -> Option<&T> {
-        self.frame_data.get::<T>()
+        self.frame_data.retrieve::<T>()
     }
 
     /// Retrieves a reference to stashed frame-specific data of the specified type.
@@ -193,5 +194,35 @@ impl<K: PipelineKey> Debug for RenderController<K> {
                     .collect::<Vec<(&K, &str)>>(),
             )
             .finish()
+    }
+}
+
+/// A simple stash for storing data of various types. Used as the backing type for frame-specific data in RenderController.
+#[derive(Debug, Default)]
+pub struct Stash {
+    inner: TypeMap,
+}
+
+impl Stash {
+    /// Creates a new, empty Stash.
+    pub fn new() -> Self {
+        Self {
+            inner: TypeMap::new(),
+        }
+    }
+
+    /// Stashes data of the specified type.
+    pub fn stash<T: 'static + Send + Sync>(&mut self, data: T) {
+        self.inner.insert(data);
+    }
+
+    /// Retrieves a reference to stashed data of the specified type.
+    pub fn retrieve<T: 'static + Send + Sync>(&self) -> Option<&T> {
+        self.inner.get::<T>()
+    }
+
+    /// Removes all stashed data.
+    pub fn clear(&mut self) {
+        self.inner.clear();
     }
 }

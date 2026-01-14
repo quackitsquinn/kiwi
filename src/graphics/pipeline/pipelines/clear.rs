@@ -1,6 +1,9 @@
 use wgpu::{Color, LoadOp};
 
-use crate::graphics::pipeline::{RenderPipeline, controller::PipelineKey};
+use crate::graphics::pipeline::{
+    RenderPipeline,
+    controller::{PipelineKey, Stash},
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct ClearPipeline(pub Color);
@@ -16,7 +19,7 @@ impl<K: PipelineKey> RenderPipeline<K> for ClearPipeline {
         Some("Clear Pipeline")
     }
 
-    fn update(&mut self) -> Option<crate::graphics::pipeline::UpdateRequest> {
+    fn update(&mut self, _stash: &mut Stash) -> Option<crate::graphics::pipeline::UpdateRequest> {
         None
     }
 

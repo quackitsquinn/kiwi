@@ -1,6 +1,6 @@
 use anyhow::Context;
 
-use crate::graphics::pipeline::controller::{PipelineKey, RenderController};
+use crate::graphics::pipeline::controller::{PipelineKey, RenderController, Stash};
 use std::any::Any;
 
 pub mod controller;
@@ -11,7 +11,7 @@ pub trait RenderPipeline<K: PipelineKey>: Send + Sync + 'static + Any {
     /// Returns the name of the pipeline.
     fn label(&self) -> Option<&str>;
     /// Updates the pipeline state.
-    fn update(&mut self) -> Option<UpdateRequest>;
+    fn update(&mut self, stash: &mut Stash) -> Option<UpdateRequest>;
     /// Renders using the pipeline.
     fn render(
         &self,
