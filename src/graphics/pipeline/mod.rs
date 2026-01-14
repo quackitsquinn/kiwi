@@ -64,10 +64,16 @@ pub fn downcast_pipeline_mut<'a, K: PipelineKey, P: RenderPipeline<K> + Sized + 
 #[error("Pipeline is not of the expected type")]
 pub struct IncorrectPipelineType;
 
-/// Frame time delta in seconds.
+/// Frame time delta in seconds. This is included in the frame data by default.
 #[repr(transparent)]
 pub struct DeltaTime(pub f32);
 
-/// Frame count that counts the number of frames rendered since a undefined starting point.
+/// Frame count that counts the number of frames rendered since a undefined starting point. This is included in the frame data by default.
 #[repr(transparent)]
 pub struct FrameCount(pub u64);
+
+/// Clear color for the render pass. This can be set by pipelines to specify the clear color used when beginning a render pass.
+#[repr(transparent)]
+pub struct ClearColor(pub wgpu::Color);
+
+// TODO: Add more built-in frame data types as needed.
