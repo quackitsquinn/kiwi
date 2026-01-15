@@ -3,6 +3,7 @@ use std::{
     collections::HashMap,
     fmt::Debug,
     sync::{Arc, OnceLock},
+    thread::ThreadId,
 };
 
 pub mod handles;
@@ -12,10 +13,12 @@ mod typemap;
 pub use typemap::{ImmutableTypeMap, TypeMap};
 
 use parking_lot::{MappedRwLockReadGuard, MappedRwLockWriteGuard};
-use resource::ResourceNode;
+//use resource::ResourceNode;
 use rustc_hash::FxBuildHasher;
 
-type ResourceMap = HashMap<TypeId, ResourceNode, FxBuildHasher>;
+use crate::component::resource::ComponentPtr;
+
+type ResourceMap = HashMap<TypeId, ComponentPtr, FxBuildHasher>;
 
 pub type ComponentReadGuard<'a, T> = MappedRwLockReadGuard<'a, T>;
 pub type ComponentWriteGuard<'a, T> = MappedRwLockWriteGuard<'a, T>;
@@ -63,7 +66,7 @@ impl ComponentStore {
         let mut_map =
             Arc::get_mut(&mut self.map).expect("Cannot insert component into shared State");
 
-        mut_map.insert(TypeId::of::<T>(), ResourceNode::new(component));
+        mut_map.insert(TypeId::of::<T>(), ComponentPtr::new(component));
         self.handle_for::<T>()
     }
 
@@ -87,9 +90,7 @@ impl Debug for ComponentStore {
             }
         }
         let mut type_names: Vec<TyDbg> = vec![];
-        for component in self.map.iter() {
-            type_names.push(TyDbg(component.1.type_name));
-        }
+        for component in self.map.iter() {}
         f.debug_struct("State")
             .field("resources", &type_names)
             .finish()
@@ -184,8 +185,7 @@ mod get_impls {
         () => {
             /// Gets a reference to a component of the specified type.
             pub fn get_checked<T: 'static>(&self) -> Option<ComponentReadGuard<'_, T>> {
-                let component = self.get_map().get(&std::any::TypeId::of::<T>())?;
-                Some(unsafe { component.downcast_ref_unchecked() })
+                todo!("later")
             }
 
             /// Gets a reference to a component of the specified type.
@@ -202,8 +202,7 @@ mod get_impls {
 
             /// Gets a mutable reference to a component of the specified type.
             pub fn get_mut_checked<T: 'static>(&self) -> Option<ComponentWriteGuard<'_, T>> {
-                let component = self.get_map().get(&std::any::TypeId::of::<T>())?;
-                Some(unsafe { component.downcast_mut_unchecked() })
+                todo!("later")
             }
 
             /// Gets a mutable reference to a component of the specified type.

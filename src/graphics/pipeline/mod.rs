@@ -11,8 +11,19 @@ pub trait RenderPipeline<K: PipelineKey>: Send + Sync + 'static + Any {
     /// Returns the name of the pipeline.
     fn label(&self) -> Option<&str>;
     /// Updates the pipeline state.
+    ///
+    /// Gives the pipeline access to the frame-specific stash data.
+    ///
+    /// This frame-specific data can be added to, and by default includes `DeltaTime` and `FrameCount`.
+    ///
+    /// Returns an optional UpdateRequest to modify the rendering process.
     fn update(&mut self, stash: &mut Stash) -> Option<UpdateRequest>;
+
     /// Renders using the pipeline.
+    ///
+    /// Gives the pipeline access to the controller, command encoder, and target texture view.
+    ///
+    /// Pipelines can access stashed frame data via the controller's
     fn render(
         &self,
         controller: &RenderController<K>,

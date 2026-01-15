@@ -1260,6 +1260,7 @@ dependencies = [
  "image",
  "log",
  "parking_lot",
+ "rand",
  "raw-window-handle",
  "rustc-hash 2.1.1",
  "smol",

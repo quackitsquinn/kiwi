@@ -1,3 +1,4 @@
+#![feature(thread_id_value)]
 use std::sync::Arc;
 
 use glam::Vec3;
@@ -25,3 +26,31 @@ pub mod component;
 pub mod graphics;
 pub mod input;
 pub mod shared;
+pub mod prelude {
+    pub use crate::FloatPosition;
+    pub use crate::ReadOnly;
+    pub use crate::ReadOnlyString;
+
+    pub use crate::anyhow;
+    pub use crate::bytemuck;
+    pub use crate::glam::{self, Mat4, Quat, Vec2, Vec3, Vec4};
+    pub use crate::parking_lot;
+    pub use crate::smol;
+    pub use crate::wgpu;
+    pub use crate::winit;
+
+    pub use crate::assets::*;
+    pub use crate::component::*;
+    pub use crate::graphics::{
+        CardinalDirection,
+        camera::Camera as RawCamera,
+        lowlevel::{
+            WgpuRenderer,
+            buf::{IndexBuffer, IndexLayout, UniformBuffer, VertexBuffer, VertexLayout},
+            pipeline::{PipelineBuilder, WgpuPipeline},
+            shader::ShaderProgram,
+        },
+    };
+    pub use crate::input::*;
+    pub use crate::shared::*;
+}
