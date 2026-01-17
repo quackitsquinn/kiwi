@@ -1,6 +1,7 @@
 use std::{
     alloc::Layout,
     any::Any,
+    fmt,
     mem::MaybeUninit,
     panic::Location,
     ptr::NonNull,
@@ -10,9 +11,9 @@ use std::{
 
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
-mod read;
+pub mod read;
 mod weak;
-mod write;
+pub mod write;
 
 pub use weak::WeakComponentPtr;
 
@@ -21,7 +22,6 @@ use crate::component::resource::read::ComponentReadGuard;
 /// Internal representation of a component.
 /// This is modeled closely after specifically `Arc`, but with internal read/write locking that was designed by me.
 ///
-#[derive(Debug)]
 pub struct ComponentPtr {
     data: NonNull<ComponentInner>,
 }
@@ -53,6 +53,7 @@ impl ComponentPtr {
                 writer: (AtomicU64::new(0), AtomicPtr::new(std::ptr::null_mut())),
                 component: Some(NonNull::new_unchecked(component_trait_ptr)),
                 layout,
+                type_name: std::any::type_name::<T>(),
             })
         };
 
@@ -152,6 +153,12 @@ impl ComponentPtr {
         self.try_write::<T>()
             .expect("ComponentPtr::write: Type mismatch when getting component")
     }
+
+    /// Checks if the component is of type T.
+    pub fn is<T: 'static>(&self) -> bool {
+        let inner = unsafe { self.data.as_ref() };
+        unsafe { inner.component.unwrap().as_ref() }.is::<T>()
+    }
 }
 
 impl Clone for ComponentPtr {
@@ -177,6 +184,17 @@ impl Drop for ComponentPtr {
                 }
             }
         }
+    }
+}
+
+impl fmt::Debug for ComponentPtr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let inner = unsafe { self.data.as_ref() };
+        f.debug_struct("ComponentPtr")
+            .field("type", &inner.type_name)
+            .field("strong", &inner.strong.load(Ordering::Relaxed))
+            .field("weak", &inner.weak.load(Ordering::Relaxed))
+            .finish()
     }
 }
 
@@ -221,6 +239,8 @@ struct ComponentInner {
     component: Option<NonNull<dyn Any + Send + Sync>>,
     // layout of the entire allocation, used for deallocation
     layout: Layout,
+    // for debugging purposes, store the type name of the component
+    type_name: &'static str,
 }
 
 unsafe impl Send for ComponentPtr {}
