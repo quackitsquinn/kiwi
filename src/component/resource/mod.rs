@@ -189,6 +189,7 @@ impl ComponentPtr {
     }
 
     /// Attempts to get a write guard for the component of type T.
+    #[track_caller]
     pub fn try_write<T: 'static>(
         &self,
     ) -> Result<Option<ComponentWriteGuard<T>>, TypeMismatchError> {
@@ -214,6 +215,7 @@ impl ComponentPtr {
     }
 
     /// Gets a write guard for the component of type T, panicking on type mismatch.
+    #[track_caller]
     pub fn write<T: 'static>(&self) -> write::ComponentWriteGuard<T> {
         self.try_write::<T>()
             .expect("ComponentPtr::write: Type mismatch when getting component")
