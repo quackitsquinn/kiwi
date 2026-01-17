@@ -14,6 +14,7 @@ impl<T: 'static> ComponentReadGuard<T> {
     /// # Safety
     ///
     /// inner must represent a valid component of type T.
+    #[track_caller]
     pub(crate) unsafe fn lock(inner: ComponentPtr) -> Self {
         let inner_ref = inner.get_ref();
 

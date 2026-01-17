@@ -164,6 +164,7 @@ impl ComponentPtr {
     }
 
     /// Attempts to get a read guard for the component of type T.
+    #[track_caller]
     pub fn try_read<T: 'static>(&self) -> Result<Option<ComponentReadGuard<T>>, TypeMismatchError> {
         let inner = unsafe { self.data.as_ref() };
         if inner.component.is_none() {
@@ -182,6 +183,7 @@ impl ComponentPtr {
     }
 
     /// Gets a read guard for the component of type T, panicking on type mismatch.
+    #[track_caller]
     pub fn read<T: 'static>(&self) -> ComponentReadGuard<T> {
         self.try_read::<T>()
             .expect("ComponentPtr::read: Type mismatch when getting component")
@@ -373,6 +375,7 @@ struct ComponentInner {
 unsafe impl Send for ComponentPtr {}
 unsafe impl Sync for ComponentPtr {}
 
+#[track_caller]
 fn check_deadlock(state: &ComponentInner, lock_type: &str) {
     let tid = state.writer.0.load(Ordering::Relaxed);
     let this = thread::current().id().as_u64().get();
