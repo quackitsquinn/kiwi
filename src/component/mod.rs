@@ -70,6 +70,7 @@ impl ComponentStore {
         let ptr = ComponentPtr::new(component);
         guard.insert(TypeId::of::<T>(), ptr.clone());
 
+        drop(guard);
         self.handle_for::<T>()
     }
 
