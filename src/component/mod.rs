@@ -89,6 +89,7 @@ impl ComponentStore {
         if let Some(ptr) = guard.get(&TypeId::of::<T>()) {
             return ComponentHandle::new(ptr.clone());
         }
+        drop(guard);
 
         // Are we init yet?
         let is_init = self.map.get().is_some();
