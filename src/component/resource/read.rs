@@ -1,6 +1,6 @@
 use std::{sync::atomic::Ordering, thread};
 
-use crate::component::resource::{ComponentInner, ComponentPtr, check_deadlock};
+use crate::component::resource::{ComponentInner, ComponentPtr, LockState, check_deadlock};
 
 /// A guard that provides read access to a component.
 pub struct ComponentReadGuard<'a, T: 'static> {
@@ -16,6 +16,10 @@ impl<'a, T: 'static> ComponentReadGuard<'a, T> {
     /// inner must represent a valid component of type T.
     pub(crate) unsafe fn lock(inner: ComponentPtr) -> Self {
         let inner_ref = inner.get_ref();
+
+        if inner_ref.flags.load(Ordering::Relaxed) & !LockState::IS_INIT.bits() != 0 {
+            panic!("Attempted to read uninitialized component");
+        }
 
         let mut is_first = true;
         while inner_ref

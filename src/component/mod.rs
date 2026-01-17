@@ -76,7 +76,9 @@ impl ComponentStore {
     }
 
     /// Creates a handle for a component of the specified type.
-    pub fn handle_for<T: 'static>(&self) -> ComponentHandle<T> {
+    ///
+    /// NOTE: Handles for non-existent components can be created; attempting to use them without inserting the component first will panic.
+    pub fn handle_for<T: 'static + Send + Sync>(&self) -> ComponentHandle<T> {
         // if the read only map is initialized, use it
         if let Some(map) = self.map.get()
             && let Some(ptr) = map.get(&TypeId::of::<T>())
@@ -86,11 +88,26 @@ impl ComponentStore {
 
         // otherwise, use the modification map
         let guard = self.modification_map.read();
-        let ptr = guard
-            .get(&TypeId::of::<T>())
-            .expect("Component not found in ComponentDB");
+        if let Some(ptr) = guard.get(&TypeId::of::<T>()) {
+            return ComponentHandle::new(ptr.clone());
+        }
 
-        ComponentHandle::new(ptr.clone())
+        // Are we init yet?
+        let is_init = self.map.get().is_some();
+        if is_init {
+            panic!(
+                "Component of type {} does not exist in ComponentDB",
+                std::any::type_name::<T>()
+            );
+        }
+
+        let ptr = ComponentPtr::uninitialized::<T>();
+
+        self.modification_map
+            .write()
+            .insert(TypeId::of::<T>(), ptr.clone());
+
+        ComponentHandle::new(ptr)
     }
 
     /// Creates a handle to the component map.
@@ -120,7 +137,14 @@ impl Debug for ComponentStore {
 impl ComponentStore {
     /// Gets a reference to a component of the specified type.
     pub fn get_checked<T: 'static>(&self) -> Option<ComponentReadGuard<'_, T>> {
-        todo!("later")
+        // if the read only map is initialized, use it
+        if let Some(map) = self.map.get()
+            && let Some(ptr) = map.get(&TypeId::of::<T>())
+        {
+            return Some(ptr.read());
+        }
+
+        todo!()
     }
 
     /// Gets a reference to a component of the specified type.
@@ -137,7 +161,14 @@ impl ComponentStore {
 
     /// Gets a mutable reference to a component of the specified type.
     pub fn get_mut_checked<T: 'static>(&self) -> Option<ComponentWriteGuard<'_, T>> {
-        todo!("later")
+        // if the read only map is initialized, use it
+        if let Some(map) = self.map.get()
+            && let Some(ptr) = map.get(&TypeId::of::<T>())
+        {
+            return Some(ptr.write());
+        }
+
+        todo!()
     }
 
     /// Gets a mutable reference to a component of the specified type.

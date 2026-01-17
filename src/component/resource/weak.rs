@@ -32,7 +32,7 @@ impl Drop for WeakComponentPtr {
         if inner.weak.fetch_sub(1, Ordering::Release) == 1 {
             std::sync::atomic::fence(Ordering::Acquire);
             unsafe {
-                std::alloc::dealloc(self.data.as_ptr() as *mut u8, inner.layout);
+                std::alloc::dealloc(self.data.as_ptr() as *mut u8, inner.layout.0);
             }
         }
     }

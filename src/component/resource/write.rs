@@ -5,7 +5,7 @@ use std::{
     thread,
 };
 
-use crate::component::resource::{ComponentPtr, check_deadlock};
+use crate::component::resource::{ComponentPtr, LockState, check_deadlock};
 
 pub struct ComponentWriteGuard<'a, T: 'static> {
     inner: ComponentPtr,
@@ -20,8 +20,11 @@ impl<'a, T: 'static> ComponentWriteGuard<'a, T> {
     /// inner must represent a valid component of type T.
     pub(crate) unsafe fn lock(inner: ComponentPtr, location: &'static Location<'static>) -> Self {
         let inner_ref = inner.get_ref();
-
         let this = thread::current().id().as_u64().get();
+
+        if inner_ref.flags.load(Ordering::Relaxed) & !LockState::IS_INIT.bits() != 0 {
+            panic!("Attempted to write uninitialized component");
+        }
 
         let mut is_first = true;
         // wait until we can acquire the write lock
