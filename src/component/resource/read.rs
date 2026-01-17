@@ -3,12 +3,12 @@ use std::{sync::atomic::Ordering, thread};
 use crate::component::resource::{ComponentInner, ComponentPtr, LockState, check_deadlock};
 
 /// A guard that provides read access to a component.
-pub struct ComponentReadGuard<'a, T: 'static> {
+pub struct ComponentReadGuard<T: 'static> {
     inner: ComponentPtr,
-    phantom: std::marker::PhantomData<&'a T>,
+    phantom: std::marker::PhantomData<T>,
 }
 
-impl<'a, T: 'static> ComponentReadGuard<'a, T> {
+impl<T: 'static> ComponentReadGuard<T> {
     /// Creates a new ComponentReadGuard.
     ///
     /// # Safety
@@ -19,6 +19,10 @@ impl<'a, T: 'static> ComponentReadGuard<'a, T> {
 
         if inner_ref.flags.load(Ordering::Relaxed) & !LockState::IS_INIT.bits() != 0 {
             panic!("Attempted to read uninitialized component");
+        }
+
+        unsafe {
+            inner.retain();
         }
 
         let mut is_first = true;
@@ -49,7 +53,7 @@ impl<'a, T: 'static> ComponentReadGuard<'a, T> {
     }
 }
 
-impl<'a, T: 'static> std::ops::Deref for ComponentReadGuard<'a, T> {
+impl<T: 'static> std::ops::Deref for ComponentReadGuard<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -58,9 +62,13 @@ impl<'a, T: 'static> std::ops::Deref for ComponentReadGuard<'a, T> {
     }
 }
 
-impl<'a, T> Drop for ComponentReadGuard<'a, T> {
+impl<T> Drop for ComponentReadGuard<T> {
     fn drop(&mut self) {
-        self.inner.get_ref().state.fetch_sub(1, Ordering::Release);
+        let inner = self.inner.get_ref();
+        inner.state.fetch_sub(1, Ordering::Release);
+        unsafe {
+            self.inner.release();
+        }
     }
 }
 

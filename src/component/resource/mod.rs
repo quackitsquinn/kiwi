@@ -164,9 +164,7 @@ impl ComponentPtr {
     }
 
     /// Attempts to get a read guard for the component of type T.
-    pub fn try_read<T: 'static>(
-        &self,
-    ) -> Result<Option<ComponentReadGuard<'_, T>>, TypeMismatchError> {
+    pub fn try_read<T: 'static>(&self) -> Result<Option<ComponentReadGuard<T>>, TypeMismatchError> {
         let inner = unsafe { self.data.as_ref() };
         if inner.component.is_none() {
             return Ok(None);
@@ -184,7 +182,7 @@ impl ComponentPtr {
     }
 
     /// Gets a read guard for the component of type T, panicking on type mismatch.
-    pub fn read<T: 'static>(&self) -> ComponentReadGuard<'_, T> {
+    pub fn read<T: 'static>(&self) -> ComponentReadGuard<T> {
         self.try_read::<T>()
             .expect("ComponentPtr::read: Type mismatch when getting component")
             .expect("ComponentPtr::read: Component not initialized")
@@ -193,7 +191,7 @@ impl ComponentPtr {
     /// Attempts to get a write guard for the component of type T.
     pub fn try_write<T: 'static>(
         &self,
-    ) -> Result<Option<ComponentWriteGuard<'_, T>>, TypeMismatchError> {
+    ) -> Result<Option<ComponentWriteGuard<T>>, TypeMismatchError> {
         let inner = unsafe { self.data.as_ref() };
         if inner.component.is_none() {
             return Ok(None);
@@ -216,7 +214,7 @@ impl ComponentPtr {
     }
 
     /// Gets a write guard for the component of type T, panicking on type mismatch.
-    pub fn write<T: 'static>(&self) -> write::ComponentWriteGuard<'_, T> {
+    pub fn write<T: 'static>(&self) -> write::ComponentWriteGuard<T> {
         self.try_write::<T>()
             .expect("ComponentPtr::write: Type mismatch when getting component")
             .expect("ComponentPtr::write: Component not initialized")
@@ -260,6 +258,33 @@ impl ComponentPtr {
         let component_trait_ptr: *mut (dyn Any + Send + Sync) = component_ptr;
         inner.component = Some(unsafe { NonNull::new_unchecked(component_trait_ptr) });
         Some(())
+    }
+
+    // Manually decrement the strong/weak counts, dropping the component if strong reaches zero.
+    pub unsafe fn release(&self) {
+        let inner = unsafe { self.data.as_ref() };
+        if inner.strong.fetch_sub(1, Ordering::Release) == 1 {
+            std::sync::atomic::fence(Ordering::Acquire);
+            unsafe {
+                let mut self_mut = self.clone();
+                self_mut.drop_component();
+            }
+            if inner.weak.fetch_sub(1, Ordering::Release) == 1 {
+                std::sync::atomic::fence(Ordering::Acquire);
+                unsafe {
+                    std::alloc::dealloc(self.data.as_ptr() as *mut u8, inner.layout.0);
+                }
+            }
+        }
+    }
+
+    /// Manually increment the strong/weak counts to retain the component.
+    pub unsafe fn retain(&self) {
+        let inner = unsafe { self.data.as_ref() };
+        // keep in mind we use both strong and weak counts to keep the inner alive
+        // weak is defined as keeping the enclosing structure alive, strong keeps the component alive
+        inner.strong.fetch_add(1, Ordering::Relaxed);
+        inner.weak.fetch_add(1, Ordering::Relaxed);
     }
 }
 

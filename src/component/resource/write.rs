@@ -7,12 +7,12 @@ use std::{
 
 use crate::component::resource::{ComponentPtr, LockState, check_deadlock};
 
-pub struct ComponentWriteGuard<'a, T: 'static> {
+pub struct ComponentWriteGuard<T: 'static> {
     inner: ComponentPtr,
-    phantom: std::marker::PhantomData<&'a mut T>,
+    phantom: std::marker::PhantomData<T>,
 }
 
-impl<'a, T: 'static> ComponentWriteGuard<'a, T> {
+impl<T: 'static> ComponentWriteGuard<T> {
     /// Creates a new ComponentWriteGuard.
     ///
     /// # Safety
@@ -24,6 +24,10 @@ impl<'a, T: 'static> ComponentWriteGuard<'a, T> {
 
         if inner_ref.flags.load(Ordering::Relaxed) & !LockState::IS_INIT.bits() != 0 {
             panic!("Attempted to write uninitialized component");
+        }
+
+        unsafe {
+            inner.retain();
         }
 
         let mut is_first = true;
@@ -55,7 +59,7 @@ impl<'a, T: 'static> ComponentWriteGuard<'a, T> {
     }
 }
 
-impl<T> Drop for ComponentWriteGuard<'_, T> {
+impl<T> Drop for ComponentWriteGuard<T> {
     fn drop(&mut self) {
         let inner_ref = self.inner.get_ref();
 
@@ -66,12 +70,15 @@ impl<T> Drop for ComponentWriteGuard<'_, T> {
             .1
             .store(std::ptr::null_mut(), Ordering::Relaxed);
 
+        unsafe {
+            self.inner.release();
+        }
         // release the write lock
         inner_ref.state.store(0, Ordering::Release);
     }
 }
 
-impl<T> Deref for ComponentWriteGuard<'_, T> {
+impl<T> Deref for ComponentWriteGuard<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -80,7 +87,7 @@ impl<T> Deref for ComponentWriteGuard<'_, T> {
     }
 }
 
-impl<T> DerefMut for ComponentWriteGuard<'_, T> {
+impl<T> DerefMut for ComponentWriteGuard<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         // SAFETY: Safety is guaranteed by the constructor.
         unsafe { &mut *(self.inner.inner_mut() as *mut dyn std::any::Any as *mut T) }

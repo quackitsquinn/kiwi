@@ -3,7 +3,7 @@ use crate::{
     prelude::{ComponentReadGuard, ComponentWriteGuard},
 };
 
-/// A handle to a component stored in a `ComponentDB`.
+/// A handle to a component.
 pub struct ComponentHandle<T: 'static> {
     ptr: ComponentPtr, // haha, now only a pointer
     _phantom: std::marker::PhantomData<T>,
@@ -18,27 +18,39 @@ impl<T> ComponentHandle<T> {
         }
     }
 
+    /// Creates a standalone ComponentHandle from a component.
+    pub(super) fn standalone(component: T) -> Self
+    where
+        T: Send + Sync,
+    {
+        let ptr = ComponentPtr::new(component);
+        Self {
+            ptr,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+
     /// Gets a reference to the component.
     #[deprecated = "use read() instead"]
-    pub fn get(&self) -> ComponentReadGuard<'_, T> {
+    pub fn get(&self) -> ComponentReadGuard<T> {
         self.ptr.read()
     }
 
     /// Gets a mutable reference to the component.
     #[deprecated = "use write() instead"]
     #[track_caller]
-    pub fn get_mut(&self) -> ComponentWriteGuard<'_, T> {
+    pub fn get_mut(&self) -> ComponentWriteGuard<T> {
         self.ptr.write()
     }
 
     /// Returns a read guard to the component.
-    pub fn read(&self) -> ComponentReadGuard<'_, T> {
+    pub fn read(&self) -> ComponentReadGuard<T> {
         self.ptr.read()
     }
 
     /// Returns a write guard to the component.
     #[track_caller]
-    pub fn write(&self) -> ComponentWriteGuard<'_, T> {
+    pub fn write(&self) -> ComponentWriteGuard<T> {
         self.ptr.write()
     }
 }

@@ -2,6 +2,7 @@ use std::{
     any::TypeId,
     collections::HashMap,
     fmt::Debug,
+    ops::Deref,
     sync::{Arc, OnceLock},
     thread::ThreadId,
 };
@@ -14,7 +15,7 @@ pub use handles::ComponentHandle;
 
 pub use typemap::{ImmutableTypeMap, TypeMap};
 
-use parking_lot::{MappedRwLockReadGuard, MappedRwLockWriteGuard, RwLock};
+use parking_lot::{MappedRwLockReadGuard, MappedRwLockWriteGuard, RwLock, RwLockReadGuard};
 //use resource::ResourceNode;
 use rustc_hash::FxBuildHasher;
 
@@ -25,13 +26,10 @@ type ResourceMap = HashMap<TypeId, ComponentPtr, FxBuildHasher>;
 pub use resource::{read::ComponentReadGuard, write::ComponentWriteGuard};
 
 /// A database for storing components of various types.
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct ComponentStore {
-    // previously, we just used an Arc that we didn't clone until finalized.
-    // but this was really annoying to manage because handles didn't function until finalized.
-    // so now we have both a modification map and a finalized map.
-    // the ComponentStore can be cloned cheaply, and the handles can be created at any time.
-    modification_map: Arc<RwLock<ResourceMap>>,
+    /// A modification map used during initialization.
+    modification_map: ComponentHandle<ResourceMap>,
     map: Arc<OnceLock<ResourceMap>>,
 }
 
@@ -41,7 +39,7 @@ impl ComponentStore {
     /// Creates a new, empty component database.
     pub fn new() -> Self {
         Self {
-            modification_map: Default::default(),
+            modification_map: ComponentHandle::standalone(Default::default()),
             map: Default::default(),
         }
     }
@@ -134,9 +132,15 @@ impl Debug for ComponentStore {
     }
 }
 
+impl Default for ComponentStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ComponentStore {
     /// Gets a reference to a component of the specified type.
-    pub fn get_checked<T: 'static>(&self) -> Option<ComponentReadGuard<'_, T>> {
+    pub fn get_checked<T: 'static>(&self) -> Option<ComponentReadGuard<T>> {
         // if the read only map is initialized, use it
         if let Some(map) = self.map.get()
             && let Some(ptr) = map.get(&TypeId::of::<T>())
@@ -144,11 +148,15 @@ impl ComponentStore {
             return Some(ptr.read());
         }
 
-        todo!()
+        if let Some(guard) = self.modification_map.read().get(&TypeId::of::<T>()) {
+            return Some(guard.read());
+        }
+
+        None
     }
 
     /// Gets a reference to a component of the specified type.
-    pub fn get<T: 'static>(&self) -> ComponentReadGuard<'_, T> {
+    pub fn get<T: 'static>(&self) -> ComponentReadGuard<T> {
         if let Some(component) = self.get_checked::<T>() {
             component
         } else {
@@ -160,7 +168,7 @@ impl ComponentStore {
     }
 
     /// Gets a mutable reference to a component of the specified type.
-    pub fn get_mut_checked<T: 'static>(&self) -> Option<ComponentWriteGuard<'_, T>> {
+    pub fn get_mut_checked<T: 'static>(&self) -> Option<ComponentWriteGuard<T>> {
         // if the read only map is initialized, use it
         if let Some(map) = self.map.get()
             && let Some(ptr) = map.get(&TypeId::of::<T>())
@@ -168,11 +176,15 @@ impl ComponentStore {
             return Some(ptr.write());
         }
 
-        todo!()
+        if let Some(guard) = self.modification_map.read().get(&TypeId::of::<T>()) {
+            return Some(guard.write());
+        }
+
+        None
     }
 
     /// Gets a mutable reference to a component of the specified type.
-    pub fn get_mut<T: 'static>(&self) -> ComponentWriteGuard<'_, T> {
+    pub fn get_mut<T: 'static>(&self) -> ComponentWriteGuard<T> {
         if let Some(component) = self.get_mut_checked::<T>() {
             component
         } else {
