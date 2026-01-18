@@ -7,8 +7,9 @@ pub use anyhow;
 pub use bytemuck;
 pub use glam;
 pub use parking_lot;
+pub use rustc_hash;
 pub use wgpu;
-pub use winit;
+pub use winit; // fast hash map implementation
 
 // even though the project im using this for is using tokio, smol is more lightweight and fits better with the rest of kiwi's design
 // (game with heavy use of networking.. very very excited to work on this!)
