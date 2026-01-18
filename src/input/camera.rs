@@ -159,4 +159,9 @@ impl CameraController {
     pub fn camera_mut(&mut self) -> &mut Camera {
         &mut self.camera
     }
+
+    /// Returns the position of the camera.
+    pub fn position(&self) -> Vec3 {
+        self.camera.position
+    }
 }
