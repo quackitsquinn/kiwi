@@ -78,10 +78,10 @@ impl<K: PipelineKey> RenderController<K> {
         self.render_list = order;
     }
 
-    fn handle_update_request(&mut self, source: K, request: UpdateRequest) {
+    fn handle_update_request(&mut self, source: &K, request: UpdateRequest) {
         match request {
             UpdateRequest::SetRenderTarget(view) => {
-                self.render_suface = Some((source, view));
+                self.render_suface = Some((source.clone(), view));
             }
         }
     }
@@ -92,9 +92,9 @@ impl<K: PipelineKey> RenderController<K> {
         stash.stash(DeltaTime(delta_time));
         self.frame_count += 1;
         stash.stash(FrameCount(self.frame_count));
-        let keys = self.pipelines.keys().cloned().collect::<Vec<K>>();
-        for pipeline_key in keys {
-            let pipeline = self.get_pipeline_mut(&pipeline_key).unwrap();
+        for i in 0..self.render_list.len() {
+            let pipeline_key = &self.render_list[i].clone();
+            let pipeline = self.get_pipeline_mut(pipeline_key).unwrap();
             if let Some(request) = pipeline.update(&mut stash) {
                 self.handle_update_request(pipeline_key, request);
             }
