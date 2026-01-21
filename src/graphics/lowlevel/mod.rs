@@ -1,7 +1,7 @@
 //! Low-level graphics abstractions using WGPU.
 use std::{
     fmt::Debug,
-    sync::{Arc, RwLock},
+    sync::{Arc, OnceLock, RwLock},
 };
 
 use anyhow::Context;
@@ -44,6 +44,7 @@ pub struct WgpuRenderer {
     pub queue: Queue,
     /// The surface configuration.
     pub config: RwLock<SurfaceConfiguration>,
+    default_sampler: OnceLock<wgpu::Sampler>,
     state: ComponentStoreHandle,
 }
 
@@ -112,7 +113,8 @@ impl WgpuRenderer {
             device,
             queue,
             config: RwLock::new(config),
-            state: state.handle(),
+            state: state.clone(),
+            default_sampler: OnceLock::new(),
         };
 
         state.insert(this);
@@ -129,6 +131,16 @@ impl WgpuRenderer {
         cfg.width = new_size.0 as u32;
         cfg.height = new_size.1 as u32;
         self.surface.configure(&self.device, &cfg);
+    }
+
+    /// Sets the default sampler. This can only be set once.
+    pub fn set_default_sampler(&self, sampler: wgpu::Sampler) {
+        let _ = self.default_sampler.set(sampler);
+    }
+
+    /// Gets the default sampler, if set.
+    pub fn default_sampler(&self) -> Option<&wgpu::Sampler> {
+        self.default_sampler.get()
     }
 
     /// Creates a command encoder.
