@@ -281,7 +281,6 @@ impl WgpuRenderer {
         };
 
         for (i, image) in image.iter().enumerate() {
-            debug!("Uploading texture layer {} ({} bytes)", i, image.len());
             self.queue.write_texture(
                 wgpu::TexelCopyTextureInfoBase {
                     texture: &text,
