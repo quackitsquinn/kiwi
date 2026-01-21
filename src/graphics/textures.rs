@@ -105,6 +105,7 @@ impl TextureCollection {
             self.label.as_deref(),
             &self.sampler,
             TextureFormat::Rgba8Unorm,
+            32,
             TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
             self.dimensions,
             &self.buf,

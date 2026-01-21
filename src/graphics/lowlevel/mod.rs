@@ -231,6 +231,8 @@ impl WgpuRenderer {
         label: Option<&str>,
         sampler: &wgpu::Sampler,
         format: wgpu::TextureFormat,
+        // bits per pixel, must be a multiple of 8
+        bpp: u32,
         usage: wgpu::TextureUsages,
         dims: (u32, u32),
         image: &[ReadOnly<u8>],
@@ -294,7 +296,7 @@ impl WgpuRenderer {
                 image.as_ref(),
                 wgpu::TexelCopyBufferLayout {
                     offset: 0,
-                    bytes_per_row: Some(4 * width),
+                    bytes_per_row: Some(width * (bpp / 8)),
                     rows_per_image: Some(height),
                 },
                 size,
