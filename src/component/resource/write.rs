@@ -5,6 +5,8 @@ use std::{
     thread,
 };
 
+use crossbeam::utils::Backoff;
+
 use crate::component::resource::{ComponentPtr, LockState, check_deadlock};
 
 pub struct ComponentWriteGuard<T: 'static> {
@@ -32,6 +34,7 @@ impl<T: 'static> ComponentWriteGuard<T> {
 
         let mut is_first = true;
         // wait until we can acquire the write lock
+        let backoff = Backoff::new();
         while let Err(v) =
             inner_ref
                 .state
@@ -42,7 +45,7 @@ impl<T: 'static> ComponentWriteGuard<T> {
                 check_deadlock(inner_ref, "write");
             }
             is_first = false;
-            thread::yield_now();
+            backoff.snooze();
         }
 
         // we have the write lock, set the writer thread id and location

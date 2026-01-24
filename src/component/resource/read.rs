@@ -1,5 +1,8 @@
 use std::{sync::atomic::Ordering, thread};
 
+use crossbeam::utils::Backoff;
+use wgpu::naga::back;
+
 use crate::component::resource::{ComponentInner, ComponentPtr, LockState, check_deadlock};
 
 /// A guard that provides read access to a component.
@@ -27,6 +30,7 @@ impl<T: 'static> ComponentReadGuard<T> {
         }
 
         let mut is_first = true;
+        let backoff = Backoff::new();
         while inner_ref
             .state
             .fetch_update(Ordering::Release, Ordering::Acquire, |v| {
@@ -44,7 +48,7 @@ impl<T: 'static> ComponentReadGuard<T> {
             })
             .is_err()
         {
-            thread::yield_now();
+            backoff.snooze();
         }
 
         Self {
